@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot with Animated Avatar</title>
+    <style>
+         body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Style for the avatar container */
+        #avatar-container {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Style for the avatar image */
+        #animated-model {
+            width: 80vw;
+            height: 80vh;
+            position: relative;
+        }
+
+        /* Style for the text box */
+        #text-box {
+            position: absolute;
+            bottom: 10%;
+            left: 5%;
+            width: 90%;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        /* Style for the chat form */
+        #chat-form {
+            position: absolute;
+            bottom: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #chat-form button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            
+        }
+
+        #output {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Avatar container -->
+    <div id="avatar-container">
+        <img id="avatar-image" style="display: none;">
+        <!-- Animated model placeholder -->
+        <div id="animated-model">
+            
+            <div id="text-box"></div>
+        </div>
+    </div>
+
+    <form id="chat-form">
+        
+        <button type="button" onclick="startRecording()">Start Recording</button>
+        <button type="button" onclick="stopRecording()">Stop Recording</button>
+    </form>
+
+    <p id="output"></p>
+
+    <!-- Include GSAP library -->
+    <script src="https://unpkg.com/gsap@3.9.1/dist/gsap.min.js"></script>
+
+    <!-- Include the Web Speech API for speech recognition -->
+    <script>
+        const recognition = new webkitSpeechRecognition(); // For Chrome
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        let isRecording = false;
+        let lastTranscript = '';
+        let autoStopTimeout;
+
+        recognition.onstart = function () {
+            // Set image to 'speaking' state (replace with your speaking animated GIF)
+            document.getElementById('avatar-image').src = "static/images/pdlisten.gif";
+            document.getElementById('avatar-image').style.display="block";
+        };
+
+        recognition.onresult = function (event) {
+            const transcript = event.results[event.results.length - 1][0].transcript;
+            document.getElementById('output').innerText = transcript;
+
+            // Automatically stop recording if no recognizable words
+            if (!transcript.trim() && isRecording) {
+                stopRecording();
+            }
+
+            // Check if the transcript has changed
+            if (transcript !== lastTranscript) {
+                // Reset the auto-stop timeout
+                clearTimeout(autoStopTimeout);
+                autoStopTimeout = setTimeout(() => {
+                    if (isRecording) {
+                        stopRecording();
+                    }
+                }, 3000); // Adjust the timeout duration (in milliseconds) as needed
+
+                // Update the last transcript
+                lastTranscript = transcript;
+            }
+        };
+
+        recognition.onend = function () {
+            // Set image back to 'listening' state (replace with your listening animated GIF)
+            document.getElementById('avatar-image').src = "static/images/pdspeak.gif";
+        };
+
+        function startRecording() {
+            isRecording = true;
+            recognition.start();
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            recognition.stop();
+            sendTextToFlask(document.getElementById('output').innerText);
+        }
+
+        function sendTextToFlask(text) {
+            fetch('/process_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display Flask output in the text box
+                document.getElementById('text-box').innerText = data.output;
+                // Convert Flask output to voice
+                convertTextToVoice(data.output);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function convertTextToVoice(text) {
+            const synth = window.speechSynthesis;
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Listen for the end event to restart the recording
+            utterance.addEventListener('end', function () {
+                startRecording();
+            });
+
+            synth.speak(utterance);
+        }
+    </script>
+
+    <!-- Your custom JavaScript for animations -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Create a timeline for animations
+            const tl = gsap.timeline();
+
+            // Animate the model (replace with your actual animation logic)
+            //tl.from("#animated-model", { opacity: 0, duration: 1, y: 50 })
+            //    .to("#animated-model", { rotation: 360, duration: 2, repeat: -1, ease: "linear" });
+
+            // Add more animations as needed
+        });
+        tl.fromTo(animatedModel, { opacity: 0 }, { opacity: 1, duration: 1 });
+    </script>
+</body>
+</html>
